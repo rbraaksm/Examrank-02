@@ -1,31 +1,18 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        ::::::::            */
-/*   union.c                                            :+:    :+:            */
-/*                                                     +:+                    */
-/*   By: rbraaksm <rbraaksm@student.codam.nl>         +#+                     */
-/*                                                   +#+                      */
-/*   Created: 2020/01/13 10:38:21 by rbraaksm       #+#    #+#                */
-/*   Updated: 2020/01/13 12:42:36 by rbraaksm      ########   odam.nl         */
-/*                                                                            */
-/* ************************************************************************** */
-
 #include <unistd.h>
-#include <stdio.h>
 
-int		length(char *str)
+size_t	ft_strlen(char *str)
 {
-	int		index;
+	size_t	i;
 
-	index = 0;
-	while (str[index] != '\0')
-		index++;
-	return (index);
+	i = 0;
+	while (str[i] != '\0')
+		i++;
+	return (i);
 }
 
 int		check(char *str, int i, char c)
 {
-	while (i >= 0)
+	while (i > 0)
 	{
 		i--;
 		if (str[i] == c)
@@ -36,43 +23,29 @@ int		check(char *str, int i, char c)
 
 void	ft_union(char **argv)
 {
-	char	*str1;
-	char	*str2;
-	int		i1;
-	int		i2;
+	int		i;
 
-	str1 = argv[1];
-	str2 = argv[2];
-	i1 = 0;
-	while (str1[i1] != '\0')
+	i = 1;
+	write(1, &argv[1][0], 1);
+	while (argv[1][i] != '\0')
 	{
-		if (check(str1, i1, str1[i1]) == 0)
-		{
-			write(1, &str1[i1], 1);
-			i1++;
-		}
-		else
-			i1++;
+		if (check(argv[1], i, argv[1][i]) == 0)
+			write(1, &argv[1][i], 1);
+		i++;
 	}
-	i1 = length(str1);
-	i2 = 0;
-	while (str2[i2] != '\0')
+	i = 0;
+	while (argv[2][i] != '\0')
 	{
-		if (check(str1, i1, str2[i2]) == 0 && check(str2, i2, str2[i2]) == 0)
-		{
-			write(1, &str2[i2], 1);
-			i2++;
-		}
-		else
-			i2++;
+		if (check(argv[1], ft_strlen(argv[1]), argv[2][i]) == 0 && check(argv[2], i, argv[2][i]) == 0)
+			write(1, &argv[2][i], 1);
+		i++;
 	}
 }
 
 int		main(int argc, char **argv)
 {
-	if (argc != 3)
-		write(1, "\n", 1);
-	else
+	if (argc == 3)
 		ft_union(argv);
-	return (0);
+	write(1, "\n", 1);
+	return (1);
 }

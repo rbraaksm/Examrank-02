@@ -5,59 +5,215 @@
 /*                                                     +:+                    */
 /*   By: rbraaksm <rbraaksm@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
-/*   Created: 2020/01/13 14:37:39 by rbraaksm       #+#    #+#                */
-/*   Updated: 2020/01/13 15:21:46 by rbraaksm      ########   odam.nl         */
+/*   Created: 2020/01/20 08:15:58 by rbraaksm       #+#    #+#                */
+/*   Updated: 2020/01/20 11:33:22 by rbraaksm      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <unistd.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#define BUFFER_SIZE 4
 
-size_t	strlen(char **line)
+size_t	ft_strlen(char *str)
 {
-	size_t	i;
+	size_t	len;
 
-	i = 0;
-	while(*line[i] != '\0')
-		i++;
+	len = 0;
+	while (str[len] != '\0')
+		len++;
+	return (len);
 }
 
-int		make_line(char **line, char c)
+char	*ft_strdup(char *str)
 {
+	char	*new;
+	char	tmp;
+	int		i;
+	int		len;
+
+	i = 0;
+	len = ft_strlen(str);
+	new = malloc(sizeof(char *) * (len + 1));
+	while (str[i] != '\0')
+	{
+		new[i] = str[i];
+		i++;
+	}
+	new[i] = '\0';
+	return (new);
+}
+
+char	*ft_strjoin(char *s1, char *s2)
+{
+	char		*newstr;
+	int			index;
+	int			index2;
+
+	if (s1 == NULL || s2 == NULL)
+		return (NULL);
+	index = 0;
+	index2 = 0;
+	newstr = malloc(sizeof(char *) * (ft_strlen(s1) + (ft_strlen(s2) + 1)));
+	if (!newstr)
+		return (NULL);
+	while (s1[index] != '\0')
+	{
+		newstr[index] = s1[index];
+		index++;
+	}
+	while (s2[index2] != '\0')
+	{
+		newstr[index + index2] = s2[index2];
+		index2++;
+	}
+	newstr[index + index2] = '\0';
+	return (newstr);
+}
+
+char	*ft_substr(char *str, int start, int len)
+{
+	int		i;
+	int		n;
+	char	*new;
+
+	i = 0;
+	n = 0;
+	if (str == NULL)
+		return (0);
+	while (str[i] != '\0')
+		i++;
+	if (!*str || start >= i)
+		return (ft_strdup(""));
+	if ((i - start) < len)
+		new = malloc(sizeof(char *) * ((i - start) + 1));
+	else
+		new = malloc(sizeof(char *) * (len + 1));
+	while (n < len)
+	{
+		new[n] = str[start + n];
+		n++;
+	}
+	new[n] = '\0';
+	return (new);
+}
+
+char	*ft_strchr(const char *s, int c)
+{
+	int		i;
+
+	i = 0;
+	while (s[i] != '\0')
+	{
+		if (s[i] == (unsigned char)c)
+			return ((char*)&(s[i]));
+		i++;
+	}
+	if (s[i] == '\0' && s[i] == (unsigned char)c)
+		return ((char*)&(s[i]));
+	return (NULL);
+}
+
+char	*make_string(char *str, int *ret)
+{
+	char	buf[BUFFER_SIZE + 1];
 	char	*tmp;
 	int		i;
 
 	i = 0;
-	tmp = malloc(sizeof(char) * (strlen(*line) + 2));
-	if (tmp == NULL)
-		return (-1);
-	while (*line[i] != '\0')
+	while (*ret > 0)
 	{
-		tmp[i] = *line[i];
-		i++;
+		*ret = read(0, buf, BUFFER_SIZE);
+		if (*ret < 0)
+		{
+			free(str);
+			return (0);
+		}
+		buf[*ret] = '\0';
+		tmp = str;
+		str = ft_strjoin(str, buf);
+		free(tmp);
+		if (str == NULL)
+			return (0);
+		if (ft_strchr(str, '\n'))
+			break ;
 	}
-	free(tmp);
-	*line[i] = '\0'
-	return (1);
+	return (str);
 }
 
-int		get_next_line(char **line);
+char	*make_line(char **line, char *str)
 {
-	char	buf[1];
-	int		res;
+	int		i;
+	char	*tmp;
 
-	line = (char **)malloc(sizeof(char) * 1);
+	i = 0;
+	while (str[i] == '\0' || str[i] != '\n')
+		i++;
+	if (str[i] == '\n')
+	{
+		*line = ft_substr(str, 0, i);
+		if (*line == NULL)
+		{
+			free(str);
+			return (0);
+		}
+		tmp = str;
+		str = ft_strdup(&(str[i + 1]));
+		free(tmp);
+		if (str == NULL)
+		{
+			free(str);
+			return (0);
+		}
+	}
+	return (str);
+}
+
+int		last_line(char **line, char *str)
+{
+	*line = ft_strdup(str);
+	free(str);
 	if (*line == NULL)
 		return (-1);
-	*line[0] = '\0';
-	while (1)
+	return (0);
+}
+
+int		get_next_line(char **line)
+{
+	static char	*str;
+	int			ret;
+
+	ret = 1;
+	if (!str)
+		str = ft_strdup("");
+	while (ret > 0)
 	{
-		res = read(0, &buf, 1);
-		if (buf[0] == '\n' || res == 0 || res == -1)
-			return (res);
-		if (make_line(*line, buf[0]) == 1);
-			
+		if ((ft_strchr(str, '\n')) != NULL)
+		{
+			str = make_line(line, str);
+			if (str == NULL)
+				return (-1);
+			return (1);
+		}
+		str = make_string(str, &ret);
+		if (str == NULL)
+			return (-1);
 	}
-	return (res);
+	return (last_line(line, str));
+}
+
+int		main(void)
+{
+	char	*str;
+	int		res;
+
+	res = 1;
+	while (res > 0)
+	{
+		res = get_next_line(&str);
+		printf("[Result] %d   [String]  %s\n", res, str);
+		free(str);
+	}
+	return (1);
 }

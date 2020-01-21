@@ -1,112 +1,81 @@
 /* ************************************************************************** */
-/*	*/
-/*	::::::::	*/
-/*   ft_printf.c	:+:	:+:	*/
-/*	 +:+	*/
-/*   By: rbraaksm <rbraaksm@student.codam.nl>	 +#+	 */
-/*	   +#+	  */
-/*   Created: 2020/01/13 20:43:19 by rbraaksm	   #+#	#+#	*/
-/*   Updated: 2020/01/14 07:18:21 by rbraaksm	  ########   odam.nl	 */
-/*	*/
+/*                                                                            */
+/*                                                        ::::::::            */
+/*   ft_printf.c                                        :+:    :+:            */
+/*                                                     +:+                    */
+/*   By: rbraaksm <rbraaksm@student.codam.nl>         +#+                     */
+/*                                                   +#+                      */
+/*   Created: 2020/01/20 11:45:15 by rbraaksm       #+#    #+#                */
+/*   Updated: 2020/01/20 22:15:38 by rbraaksm      ########   odam.nl         */
+/*                                                                            */
 /* ************************************************************************** */
 
-#include <stdio.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
 
-typedef struct	s_flags
+typedef struct	s_data
 {
 	char		type;
-	int			width;
 	int			prec;
+	int			width;
 	int			dot;
 	int			neg;
-}				t_flags;
+	int			index;
+	int			count;
+}				t_data;
 
-int		putnbr(t_flags *flags, long nbr, int len)
+void	find_width_prec(t_data *flags, const char *str)
 {
-	char	str[10];
-	int		count;
-	int		base;
-	int		i;
-
-	count = 0;
-	if (nbr == 0)
-		return (write(1, "0", 1));
-	if (nbr == 2147483648)
-		return (write(1, "2147483648", 10));
-	base = 10;
-	if (flags->type == 'x')
-		base = 16;
-	i = len - 1;
-	while (nbr != 0)
+	while ((str[flags->index] >= '0' && str[flags->index] <= '9') && flags->dot == 0)
 	{
-		if (nbr % base < 10)
-			str[i] = nbr % base + '0';
-		else if (flags->type == 'x')
-			str[i] = nbr % base + 87;
-		nbr /= base;
-		i--;
+		flags->width += str[flags->index] - '0';
+		flags->index++;
+		if (str[flags->index] >= '0' && str[flags->index] <= '9')
+			flags->width *= 10;
 	}
-	write(1, str, len);
-	return (len);
+	if (str[flags->index] == '.')
+	{
+		flags->dot = 1;
+		flags->index++;
+	}
+	while ((str[flags->index] >= '0' && str[flags->index] <= '9') && flags->dot == 1)
+	{
+		flags->prec += str[flags->index] - '0';
+		flags->index++;
+		if (str[flags->index] >= '0' && str[flags->index] <= '9')
+			flags->prec *= 10;
+	}
+	if (str[flags->index] == 's')
+		flags->type = 's';
+	if (str[flags->index] == 'd')
+		flags->type = 'd';
+	if (str[flags->index] == 'x')
+		flags->type = 'x';
 }
 
-int		digit(va_list args, t_flags *flags)
+size_t	ft_strlen(char *str)
 {
-	int		count;
-	long	nbr;
-	long	tmp;
-	int		len;
+	size_t	i;
 
-	nbr = va_arg(args, int);
-	len = 0;
-	count = 0;
-	if (nbr < 0)
-	{
-		flags->neg = 1;
-		nbr *= -1;
-	}
-	tmp = nbr;
-	while (tmp > 0)
-	{
-		tmp = tmp / (flags->type == 'd' ? 10 : 16);
-		len++;
-	}
-	if (nbr == 0)
-		len = 1;
-	flags->width = flags->width - flags->neg - (len > flags->prec ? len : flags->prec);
-	while (flags->width > 0)
-	{
-		count += write(1, " ", 1);
-		flags->width--;
-	}
-	if (flags->neg == 1)
-		count += write(1, "-", 1);
-	if (flags->prec > len)
-	{
-		while (flags->prec > len)
-		{
-			count += write(1, "0", 1);
-			flags->prec--;
-		}
-	}
-	if (nbr == 0 && flags->prec == 0)
-		return (count);
-	count += putnbr(flags, nbr, len);
-	return (count);
+	i = 0;
+	while (str[i] != '\0')
+		i++;
+	return (i);
 }
 
-int		string(va_list args, t_flags *flags)
+void	string(va_list args, t_data *flags)
 {
-	int		count;
-	int		len;
-	int		i;
 	char	*str;
+	int		len;
+	int		i;
 
-	str = va_arg(args, char*);
-	count = 0;
+	str = va_arg(args, char *);
+	if (str == NULL && flags->dot == 1 && flags->prec == 0 && flags->width == 0)
+		return ;
+	if (str == NULL)
+		str = "(null)";
 	len = 0;
 	i = 0;
 	while (str[len] != '\0')
@@ -114,123 +83,143 @@ int		string(va_list args, t_flags *flags)
 	flags->width = flags->width - (flags->dot == 0 ? len : flags->prec);
 	while (flags->width > 0)
 	{
-		count += write(1, " ", 1);
+		flags->count += write(1, " ", 1);
 		flags->width--;
 	}
 	if (flags->dot == 0)
-		count += write(1, str, len);
+		flags->count += write(1, str, len);
 	else
 	{
 		while (flags->prec > 0)
 		{
-			count += write(1, &str[i], 1);
+			flags->count += write(1, &str[i], 1);
 			flags->prec--;
 			i++;
 		}
 	}
-	return (count);
 }
 
-void	width_prec(const char *str, t_flags *flags)
+int		length(t_data *flags, long nbr)
 {
-	int		dot;
-	int		i;
-	int		w;
-	int		p;
+	int		len;
 
-	dot = 0;
-	w = 0;
-	while (str[i] != flags->type)
+	len = 0;
+	while (nbr > 0)
 	{
-		if ((str[i] >= '0' && str[i] <= '9') && flags->dot == 0)
-		{
-			flags->width += str[i] - '0';
-			if (str[i + 1] >= '0' && str[i + 1] <= '9')
-				flags->width *= 10;
-		}
-		else if (str[i] == '.')
-			flags->dot = 1;
-		else if ((str[i] >= '0' && str[i] <= '9') && flags->dot == 1)
-		{
-			flags->prec += str[i] - '0';
-			if (str[i + 1] >= '0' && str[i + 1] <= '9')
-				flags->prec *= 10;
-		}
-		i++;
+		len++;
+		nbr /= flags->type == 'd' ? 10 : 16;
 	}
+	return (len);
 }
 
-int		ft_flags(va_list args, t_flags *flags, const char *str, int *index)
+void	putnbr(t_data *flags, long nbr, int len)
 {
-	int		count;
+	char	str[16];
 	int		i;
+	int		base;
 
-	i = 0;
-	while (str[i] != '\0')
+	i = len - 1;
+	base = 10;
+	if (nbr == 0)
 	{
-		if (str[i] == 'd')
-			flags->type = 'd';
-		else if (str[i] == 's')
-			flags->type = 's';
-		else if (str[i] == 'x')
-			flags->type = 'x';
-		if (flags->type != ' ')
-			break ;
-		i++;
+		flags->count += write(1, "0", 1);
+		return ;
 	}
-	*index += i;
-	width_prec(str, flags);
+	if (flags->type == 'x')
+		base = 16;
+	while (nbr != 0)
+	{
+		if (nbr % base < 10)
+			str[i] = (nbr % base) + '0';
+		else if (flags->type == 'x')
+			str[i] = (nbr % base) + 87;
+		nbr /= base;
+		i--;
+	}
+	flags->count += write(1, str, len);
+}
+
+void	number(va_list args, t_data *flags)
+{
+	long	nbr;
+	int			len;
+
+	nbr = va_arg(args, long);
+	len = 0;
+	if (nbr == -2147483648 && flags->type == 'd')
+	{
+		flags->neg = 1;
+		nbr = 2147483648;
+	}
+	if (nbr < 0)
+	{
+		flags->neg = 1;
+		nbr = nbr * -1;
+	}
+	if (nbr == 0)
+		len = 1;
+	else
+		len = length(flags, nbr);
+	flags->width = flags->width - flags->neg - (len > flags->prec ? len : flags->prec);
+	while (flags->width > 0)
+	{
+		flags->count += write(1, " ", 1);
+		flags->width--;
+	}
+	if (flags->neg == 1 && flags->type == 'd')
+		flags->count += write(1, "-", 1);
+	while ((flags->prec - len) > 0)
+	{
+		flags->count += write(1, "0", 1);
+		flags->prec--;
+	}
+	if (nbr == 0 && flags->dot == 1 && flags->prec == 0)
+		return ;
+	putnbr(flags, nbr, len);
+}
+
+void	ft_start(va_list args, t_data *flags, const char *str)
+{
+	find_width_prec(flags, str);
+	// printf("[WIDTH]  %d\n", flags->width);
+	// printf("[PREC]   %d\n", flags->prec);
+	// printf("[DOT]    %d\n", flags->dot);
 	if (flags->type == 's')
-		count = string(args, flags);
-	else if (flags->type == 'd' || flags->type == 'x')
-		count = digit(args, flags);
-	return (count);
+		string(args, flags);
+	else
+		number(args, flags);
 }
 
-void	empty_flags(t_flags *flags)
+void	empty_flags(t_data *flags)
 {
-	flags->type = ' ';
 	flags->width = 0;
 	flags->prec = 0;
 	flags->dot = 0;
 	flags->neg = 0;
+	flags->type = ' ';
 }
 
 int		ft_printf(const char *str, ...)
 {
-	va_list args;
-	t_flags	flags;
-	int		count;
-	int		index;
+	va_list	args;
+	t_data	flags;
 
+	flags.index = 0;
+	flags.count = 0;
 	va_start(args, str);
-	count = 0;
-	index = 0;
-	while (str[index] != '\0')
+	while (str[flags.index] != '\0')
 	{
 		empty_flags(&flags);
-		if (str[index] == '%')
-			count += ft_flags(args, &flags, &(str[index]), &index);
-		else if (str[index] != '%')
-			count += write(1, &str[index], 1);
-		index++;
+		if (str[flags.index] == '%')
+		{
+			flags.index++;
+			ft_start(args, &flags, str);
+		}
+		else
+			flags.count += write(1, &str[flags.index], 1);
+		flags.index++;
 	}
 	va_end(args);
-	return (count);
+	return (flags.count);
 }
 
-int		main(void)
-{
-	int		str;
-	int		res;
-	int		res2;
-
-	str = 454546;
-	res = ft_printf("%s is %d jaar %d", "Joep", 5, 4);
-	printf("\n");
-	res2 = printf("%s is %d jaar %s", "Joep", 5, "oud");
-	// printf("\n");
-	// printf("Mine = %d\n", res);
-	// printf("Real = %d\n", res2);
-	return (0);
-}
